@@ -1,0 +1,27 @@
+# Local Kener instance for provider acceptance tests. Intended for use on a
+# developer machine only (see GNUmakefile: `make kener-up` / `make kener-down`).
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: kener-tf-redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  kener:
+    image: rajnandan1/kener:latest
+    container_name: kener-tf
+    environment:
+      KENER_SECRET_KEY: local-dev-secret-key-not-for-production
+      ORIGIN: http://localhost:3000
+      REDIS_URL: redis://redis:6379
+      DATABASE_URL: sqlite://./database/kener.sqlite.db
+    ports:
+      - "3000:3000"
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped

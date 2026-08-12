@@ -1,0 +1,38 @@
+# Build artifacts
+/terraform-provider-kener
+dist/
+bin/
+
+# Go
+*.test
+*.out
+coverage.txt
+vendor/
+
+# Terraform
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+.terraformrc
+terraform.rc
+
+# Local dev / secrets
+*.env
+.env
+.env.local
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Editor
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Local manual test module (dev-only)
+/local-test/
