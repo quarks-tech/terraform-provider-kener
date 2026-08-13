@@ -19,9 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Possible "Provider produced inconsistent result after apply" when a resource
   had two or more monitors: `kener_incident`, `kener_maintenance` and
-  `kener_page` now keep the configured `monitors` value/order instead of
-  overwriting it with the (possibly reordered) server response. The server
-  value is still used to seed the list on import.
+  `kener_page` now keep the configured `monitors` order on create/update instead
+  of overwriting it with the (possibly reordered) server response. On read,
+  `kener_page.monitors` is refreshed from the server (page monitors are
+  position-ordered) so drift is still detected; `kener_incident`/
+  `kener_maintenance` monitors have no stable server ordering and are kept as
+  configured (documented under Known limitations).
 - `kener_page` for the built-in `~home` page no longer calls the delete API on
   destroy; it drops the resource from state with a warning (the page cannot be
   deleted), mirroring `kener_site_config`.

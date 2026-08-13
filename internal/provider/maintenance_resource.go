@@ -156,7 +156,9 @@ func modelToMaintenance(ctx context.Context, m *maintenanceResourceModel) (*clie
 // start_date_time to the caller (Kener minute-aligns it; see incident).
 // monitors are kept as configured when known, to avoid an inconsistent-result
 // error from a reordered server echo (see applyIncident); the server value only
-// seeds the list when it is absent (import / omitted).
+// seeds the list when it is absent (import / omitted). As with incidents, this
+// also runs in Read, so out-of-band monitor changes are not detected (known
+// limitation — maintenance monitors have no stable server ordering).
 func applyMaintenance(ctx context.Context, mm *client.Maintenance, m *maintenanceResourceModel) diag.Diagnostics {
 	m.ID = types.StringValue(mm.ID.String())
 	m.Title = types.StringValue(mm.Title)

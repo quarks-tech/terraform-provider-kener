@@ -145,7 +145,16 @@ func modelToPage(ctx context.Context, m *pageResourceModel) (*client.Page, diag.
 
 // applyPage copies the server's view of a page onto the model, leaving
 // page_settings as configured (Kener deep-merges server-side defaults).
-func applyPage(ctx context.Context, p *client.Page, m *pageResourceModel) diag.Diagnostics {
+//
+// refreshMonitors controls how the monitors list is reconciled. In Create/Update
+// (refreshMonitors=false) the configured order is kept when known, because
+// overwriting a known plan value with the (possibly reordered) server echo would
+// trigger an "inconsistent result after apply" error; the server value is only
+// used to seed the list when it is absent (import / omitted). In Read
+// (refreshMonitors=true) there is no planned value to be inconsistent with, so
+// the list is refreshed from the server to surface real drift — safe here
+// because the client sorts page monitors deterministically by position.
+func applyPage(ctx context.Context, p *client.Page, m *pageResourceModel, refreshMonitors bool) diag.Diagnostics {
 	m.ID = types.StringValue(p.ID.String())
 	m.PageTitle = types.StringValue(p.PageTitle)
 	m.PageHeader = types.StringValue(p.PageHeader)
@@ -155,10 +164,7 @@ func applyPage(ctx context.Context, p *client.Page, m *pageResourceModel) diag.D
 	if m.PagePath.IsNull() || m.PagePath.IsUnknown() {
 		m.PagePath = types.StringValue(p.PagePath)
 	}
-	// Keep the configured monitor order when known; seeding from the server echo
-	// could reorder a known plan value and trigger an inconsistent-result error.
-	// Only fall back to the server list when it is absent (import / omitted).
-	if !m.Monitors.IsNull() && !m.Monitors.IsUnknown() {
+	if !refreshMonitors && !m.Monitors.IsNull() && !m.Monitors.IsUnknown() {
 		return nil
 	}
 	var mons []string
@@ -190,7 +196,7 @@ func (r *pageResource) Create(ctx context.Context, req resource.CreateRequest, r
 		return
 	}
 
-	resp.Diagnostics.Append(applyPage(ctx, created, &plan)...)
+	resp.Diagnostics.Append(applyPage(ctx, created, &plan, false)...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
@@ -212,7 +218,7 @@ func (r *pageResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 		return
 	}
 
-	resp.Diagnostics.Append(applyPage(ctx, got, &state)...)
+	resp.Diagnostics.Append(applyPage(ctx, got, &state, true)...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
@@ -236,7 +242,7 @@ func (r *pageResource) Update(ctx context.Context, req resource.UpdateRequest, r
 		return
 	}
 
-	resp.Diagnostics.Append(applyPage(ctx, updated, &plan)...)
+	resp.Diagnostics.Append(applyPage(ctx, updated, &plan, false)...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 

@@ -190,6 +190,12 @@ func modelToIncident(ctx context.Context, m *incidentResourceModel) (*client.Inc
 // would trigger a "Provider produced inconsistent result after apply" error.
 // The server value is only used to seed the list when it is absent (on import,
 // or when the user omitted monitors entirely so the plan is unknown).
+//
+// Because this also runs in Read, a deliberate side effect is that out-of-band
+// changes to the monitor set are not detected: Kener exposes no stable ordering
+// for incident monitors, so refreshing them from the server would risk perpetual
+// diffs. This is documented as a known limitation (unlike kener_page, whose
+// monitors are position-ordered and therefore refreshed in Read).
 func applyIncident(ctx context.Context, in *client.Incident, m *incidentResourceModel) diag.Diagnostics {
 	m.ID = types.StringValue(in.ID.String())
 	m.Title = types.StringValue(in.Title)

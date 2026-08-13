@@ -90,10 +90,15 @@ that out-of-band changes to these specific fields are **not** detected by
 - `kener_site_config` with `data_type = "object"` — object values are merged
   server-side and are kept as configured. String values (`data_type = "string"`)
   are **not** normalised, so drift on them **is** detected and reconciled.
+- `kener_incident.monitors` and `kener_maintenance.monitors` — Kener does not
+  expose a stable ordering for these attachments, so the provider keeps the
+  configured list to avoid perpetual diffs. Changes to these attachments made
+  outside Terraform are therefore not detected. (`kener_page.monitors` *is*
+  refreshed on read, because page monitors are position-ordered.)
 
-Everything else (names, statuses, booleans, monitor attachments, etc.) is
-refreshed from the server on every read, so genuine drift there is detected
-normally.
+Everything else (names, statuses, booleans, `kener_page` monitor attachments,
+etc.) is refreshed from the server on every read, so genuine drift there is
+detected normally.
 
 ## Development
 
