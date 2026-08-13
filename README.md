@@ -70,6 +70,31 @@ defaults into this value; the provider stores exactly what you configure, so no
 perpetual diff appears. For the same reason, `type_data` is **not** recovered on
 `terraform import` — set it in configuration after importing.
 
+## Known limitations
+
+Kener normalises some values server-side, so for a few attributes the provider
+deliberately stores the **configured** value rather than the server's, to avoid
+"inconsistent result after apply" errors and perpetual diffs. A side effect is
+that out-of-band changes to these specific fields are **not** detected by
+`terraform plan`:
+
+- `kener_monitor.type_data` and `monitor_settings_json` — Kener deep-merges its
+  own defaults into these JSON objects, so the server response contains extra
+  keys. The configured value is kept verbatim and is **not** recovered on
+  `terraform import` (set it in configuration after importing).
+- `kener_page.page_settings` — same deep-merge behaviour as `type_data`.
+- `kener_incident.start_date_time` / `end_date_time` and
+  `kener_maintenance.start_date_time` — Kener aligns timestamps to the minute.
+  The configured value is kept; the server value is only used to seed the field
+  on import (so it is ignored in import verification).
+- `kener_site_config` with `data_type = "object"` — object values are merged
+  server-side and are kept as configured. String values (`data_type = "string"`)
+  are **not** normalised, so drift on them **is** detected and reconciled.
+
+Everything else (names, statuses, booleans, monitor attachments, etc.) is
+refreshed from the server on every read, so genuine drift there is detected
+normally.
+
 ## Development
 
 ```bash

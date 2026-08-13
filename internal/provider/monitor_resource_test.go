@@ -1,10 +1,14 @@
 package provider
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
+
+	"github.com/quarks-tech/terraform-provider-kener/internal/client"
 )
 
 func TestAccMonitorResource(t *testing.T) {
@@ -13,6 +17,7 @@ func TestAccMonitorResource(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckMonitorDestroy,
 		Steps: []resource.TestStep{
 			// Create + Read.
 			{
@@ -54,6 +59,29 @@ func TestAccMonitorResource(t *testing.T) {
 			},
 		},
 	})
+}
+
+// testAccCheckMonitorDestroy verifies every kener_monitor in state is gone from
+// the server after destroy.
+func testAccCheckMonitorDestroy(s *terraform.State) error {
+	c, err := testAccClient()
+	if err != nil {
+		return err
+	}
+	for _, rs := range s.RootModule().Resources {
+		if rs.Type != "kener_monitor" {
+			continue
+		}
+		tag := rs.Primary.Attributes["tag"]
+		_, err := c.GetMonitor(context.Background(), tag)
+		if err == nil {
+			return fmt.Errorf("monitor %q still exists after destroy", tag)
+		}
+		if !client.IsNotFound(err) {
+			return fmt.Errorf("unexpected error checking monitor %q: %w", tag, err)
+		}
+	}
+	return nil
 }
 
 func testAccMonitorConfigBasic(tag, name string) string {

@@ -6,6 +6,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
+
+	"github.com/quarks-tech/terraform-provider-kener/internal/client"
 )
 
 // testAccProtoV6ProviderFactories are used to instantiate the provider during
@@ -27,4 +29,10 @@ func testAccPreCheck(t *testing.T) {
 	if os.Getenv(envAPIToken) == "" {
 		t.Fatalf("%s must be set for acceptance tests", envAPIToken)
 	}
+}
+
+// testAccClient builds an API client from the same environment the provider
+// uses, for CheckDestroy functions that verify a resource is gone server-side.
+func testAccClient() (*client.Client, error) {
+	return client.New(os.Getenv(envEndpoint), os.Getenv(envAPIToken))
 }

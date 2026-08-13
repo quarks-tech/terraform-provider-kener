@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/quarks-tech/terraform-provider-kener/internal/client"
 )
@@ -80,6 +81,7 @@ func (r *siteConfigResource) Configure(_ context.Context, req resource.Configure
 }
 
 func (r *siteConfigResource) set(ctx context.Context, model *siteConfigResourceModel) error {
+	tflog.Debug(ctx, "setting site config", map[string]any{"key": model.Key.ValueString()})
 	entry, err := r.client.SetSiteConfig(ctx, model.Key.ValueString(), jsonRaw(model.Value))
 	if err != nil {
 		return err
@@ -109,6 +111,7 @@ func (r *siteConfigResource) Read(ctx context.Context, req resource.ReadRequest,
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	tflog.Debug(ctx, "reading site config", map[string]any{"key": state.Key.ValueString()})
 	entry, err := r.client.GetSiteConfig(ctx, state.Key.ValueString())
 	if err != nil {
 		if client.IsNotFound(err) {
@@ -120,7 +123,11 @@ func (r *siteConfigResource) Read(ctx context.Context, req resource.ReadRequest,
 	}
 	state.DataType = types.StringValue(entry.DataType)
 	// On import there is no configured value yet, so seed it from the server.
-	if state.Value.IsNull() {
+	// For string values Kener stores them verbatim (no server-side merge), so it
+	// is safe to refresh from the server and surface real drift. Object values
+	// are deep-merged server-side, so they are left as configured to avoid a
+	// perpetual diff.
+	if state.Value.IsNull() || entry.DataType == "string" {
 		state.Value = jsonValue(entry.Value)
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)

@@ -19,6 +19,11 @@ func TestMonitorTagsUnmarshal(t *testing.T) {
 			in:   `[{"monitor_tag":"a","position":0},{"monitor_tag":"b","position":1}]`,
 			want: []string{"a", "b"},
 		},
+		"read shape sorted by position": {
+			// Array order differs from position; result must follow position.
+			in:   `[{"monitor_tag":"b","position":1},{"monitor_tag":"a","position":0},{"monitor_tag":"c","position":2}]`,
+			want: []string{"a", "b", "c"},
+		},
 		"write shape (strings)": {
 			in:   `["a","b"]`,
 			want: []string{"a", "b"},

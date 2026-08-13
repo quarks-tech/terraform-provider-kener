@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/quarks-tech/terraform-provider-kener/internal/client"
 )
@@ -232,6 +233,7 @@ func (r *monitorResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
+	tflog.Debug(ctx, "creating monitor", map[string]any{"tag": plan.Tag.ValueString()})
 	created, err := r.client.CreateMonitor(ctx, modelToMonitor(&plan))
 	if err != nil {
 		resp.Diagnostics.AddError("Error creating monitor", fmt.Sprintf("Could not create monitor %q: %s", plan.Tag.ValueString(), err))
@@ -250,6 +252,7 @@ func (r *monitorResource) Read(ctx context.Context, req resource.ReadRequest, re
 		return
 	}
 
+	tflog.Debug(ctx, "reading monitor", map[string]any{"tag": state.Tag.ValueString()})
 	got, err := r.client.GetMonitor(ctx, state.Tag.ValueString())
 	if err != nil {
 		if client.IsNotFound(err) {
@@ -271,6 +274,7 @@ func (r *monitorResource) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
+	tflog.Debug(ctx, "updating monitor", map[string]any{"tag": plan.Tag.ValueString()})
 	updated, err := r.client.UpdateMonitor(ctx, plan.Tag.ValueString(), modelToMonitor(&plan))
 	if err != nil {
 		resp.Diagnostics.AddError("Error updating monitor", fmt.Sprintf("Could not update monitor %q: %s", plan.Tag.ValueString(), err))
@@ -288,6 +292,7 @@ func (r *monitorResource) Delete(ctx context.Context, req resource.DeleteRequest
 		return
 	}
 
+	tflog.Debug(ctx, "deleting monitor", map[string]any{"tag": state.Tag.ValueString()})
 	if err := r.client.DeleteMonitor(ctx, state.Tag.ValueString()); err != nil {
 		if client.IsNotFound(err) {
 			return

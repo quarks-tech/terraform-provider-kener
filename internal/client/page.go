@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"sort"
 )
 
 // HomePageToken is the special page_path used to address the built-in home page,
@@ -29,8 +30,12 @@ func (m *MonitorTags) UnmarshalJSON(b []byte) error {
 	var objs []struct {
 		MonitorTag string `json:"monitor_tag"`
 		Tag        string `json:"tag"`
+		Position   int    `json:"position"`
 	}
 	if err := json.Unmarshal(b, &objs); err == nil {
+		// Order by position so the read order is deterministic regardless of how
+		// the API happens to sort the array.
+		sort.SliceStable(objs, func(i, j int) bool { return objs[i].Position < objs[j].Position })
 		tags := make(MonitorTags, 0, len(objs))
 		for _, o := range objs {
 			t := o.MonitorTag

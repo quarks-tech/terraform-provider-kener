@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/quarks-tech/terraform-provider-kener/internal/client"
 )
@@ -153,6 +154,9 @@ func modelToMaintenance(ctx context.Context, m *maintenanceResourceModel) (*clie
 
 // applyMaintenance copies the server's view onto the model, leaving
 // start_date_time to the caller (Kener minute-aligns it; see incident).
+// monitors are kept as configured when known, to avoid an inconsistent-result
+// error from a reordered server echo (see applyIncident); the server value only
+// seeds the list when it is absent (import / omitted).
 func applyMaintenance(ctx context.Context, mm *client.Maintenance, m *maintenanceResourceModel) diag.Diagnostics {
 	m.ID = types.StringValue(mm.ID.String())
 	m.Title = types.StringValue(mm.Title)
@@ -161,9 +165,12 @@ func applyMaintenance(ctx context.Context, mm *client.Maintenance, m *maintenanc
 	m.DurationSeconds = int64Value(mm.DurationSeconds)
 	m.Status = types.StringValue(mm.Status)
 	m.URL = types.StringValue(mm.URL)
-	list, diags := monitorsToModel(ctx, mm.Monitors)
-	m.Monitors = list
-	return diags
+	if m.Monitors.IsNull() || m.Monitors.IsUnknown() {
+		list, diags := monitorsToModel(ctx, mm.Monitors)
+		m.Monitors = list
+		return diags
+	}
+	return nil
 }
 
 func (r *maintenanceResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -178,6 +185,7 @@ func (r *maintenanceResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
+	tflog.Debug(ctx, "creating maintenance", map[string]any{"title": plan.Title.ValueString()})
 	created, err := r.client.CreateMaintenance(ctx, payload)
 	if err != nil {
 		resp.Diagnostics.AddError("Error creating maintenance", fmt.Sprintf("Could not create maintenance %q: %s", plan.Title.ValueString(), err))
@@ -205,6 +213,7 @@ func (r *maintenanceResource) Read(ctx context.Context, req resource.ReadRequest
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	tflog.Debug(ctx, "reading maintenance", map[string]any{"id": state.ID.ValueString()})
 	got, err := r.client.GetMaintenance(ctx, state.ID.ValueString())
 	if err != nil {
 		if client.IsNotFound(err) {
@@ -233,6 +242,7 @@ func (r *maintenanceResource) Update(ctx context.Context, req resource.UpdateReq
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	tflog.Debug(ctx, "updating maintenance", map[string]any{"id": plan.ID.ValueString()})
 	updated, err := r.client.UpdateMaintenance(ctx, plan.ID.ValueString(), payload)
 	if err != nil {
 		resp.Diagnostics.AddError("Error updating maintenance", fmt.Sprintf("Could not update maintenance %q: %s", plan.ID.ValueString(), err))
@@ -248,6 +258,7 @@ func (r *maintenanceResource) Delete(ctx context.Context, req resource.DeleteReq
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	tflog.Debug(ctx, "deleting maintenance", map[string]any{"id": state.ID.ValueString()})
 	if err := r.client.DeleteMaintenance(ctx, state.ID.ValueString()); err != nil {
 		if client.IsNotFound(err) {
 			return

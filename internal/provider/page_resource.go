@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/quarks-tech/terraform-provider-kener/internal/client"
 )
@@ -154,6 +155,12 @@ func applyPage(ctx context.Context, p *client.Page, m *pageResourceModel) diag.D
 	if m.PagePath.IsNull() || m.PagePath.IsUnknown() {
 		m.PagePath = types.StringValue(p.PagePath)
 	}
+	// Keep the configured monitor order when known; seeding from the server echo
+	// could reorder a known plan value and trigger an inconsistent-result error.
+	// Only fall back to the server list when it is absent (import / omitted).
+	if !m.Monitors.IsNull() && !m.Monitors.IsUnknown() {
+		return nil
+	}
 	var mons []string
 	if p.Monitors != nil {
 		mons = []string(*p.Monitors)
@@ -176,6 +183,7 @@ func (r *pageResource) Create(ctx context.Context, req resource.CreateRequest, r
 		return
 	}
 
+	tflog.Debug(ctx, "creating page", map[string]any{"page_path": plan.PagePath.ValueString()})
 	created, err := r.client.CreatePage(ctx, payload)
 	if err != nil {
 		resp.Diagnostics.AddError("Error creating page", fmt.Sprintf("Could not create page %q: %s", plan.PagePath.ValueString(), err))
@@ -193,6 +201,7 @@ func (r *pageResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 		return
 	}
 
+	tflog.Debug(ctx, "reading page", map[string]any{"page_path": state.PagePath.ValueString()})
 	got, err := r.client.GetPage(ctx, state.PagePath.ValueString())
 	if err != nil {
 		if client.IsNotFound(err) {
@@ -220,6 +229,7 @@ func (r *pageResource) Update(ctx context.Context, req resource.UpdateRequest, r
 		return
 	}
 
+	tflog.Debug(ctx, "updating page", map[string]any{"page_path": plan.PagePath.ValueString()})
 	updated, err := r.client.UpdatePage(ctx, plan.PagePath.ValueString(), payload)
 	if err != nil {
 		resp.Diagnostics.AddError("Error updating page", fmt.Sprintf("Could not update page %q: %s", plan.PagePath.ValueString(), err))
@@ -234,6 +244,18 @@ func (r *pageResource) Delete(ctx context.Context, req resource.DeleteRequest, r
 	var state pageResourceModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	tflog.Debug(ctx, "deleting page", map[string]any{"page_path": state.PagePath.ValueString()})
+
+	// The built-in home page cannot be deleted via the API; removing the resource
+	// just drops it from state, leaving the page on the server unchanged.
+	if state.PagePath.ValueString() == client.HomePageToken {
+		resp.Diagnostics.AddWarning(
+			"Home page left unchanged",
+			"The Kener home page (~home) cannot be deleted. The resource has been removed from Terraform state, but the page remains on the server.",
+		)
 		return
 	}
 

@@ -1,17 +1,21 @@
 package provider
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
+
+	"github.com/quarks-tech/terraform-provider-kener/internal/client"
 )
 
 func TestAccIncidentResource(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckIncidentDestroy,
 		Steps: []resource.TestStep{
 			// Create incident (+ attached monitor) and a comment.
 			{
@@ -69,6 +73,90 @@ func TestAccIncidentResource(t *testing.T) {
 			},
 		},
 	})
+}
+
+// TestAccIncidentResource_multipleMonitors guards the C1 fix: an incident with
+// several monitors must preserve the configured order in state. Before the fix
+// the server echo was written back unconditionally, which could reorder a known
+// plan value and fail with "inconsistent result after apply".
+func TestAccIncidentResource_multipleMonitors(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckIncidentDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccIncidentConfigMultiMonitors("TF Acc Multi Incident", 1700000000),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("kener_incident.multi", "monitors.#", "3"),
+					resource.TestCheckResourceAttr("kener_incident.multi", "monitors.0.monitor_tag", "tf-acc-inc-m1"),
+					resource.TestCheckResourceAttr("kener_incident.multi", "monitors.0.impact", "DOWN"),
+					resource.TestCheckResourceAttr("kener_incident.multi", "monitors.1.monitor_tag", "tf-acc-inc-m2"),
+					resource.TestCheckResourceAttr("kener_incident.multi", "monitors.1.impact", "DEGRADED"),
+					resource.TestCheckResourceAttr("kener_incident.multi", "monitors.2.monitor_tag", "tf-acc-inc-m3"),
+					resource.TestCheckResourceAttr("kener_incident.multi", "monitors.2.impact", "MAINTENANCE"),
+				),
+			},
+		},
+	})
+}
+
+func testAccIncidentConfigMultiMonitors(title string, start int64) string {
+	return fmt.Sprintf(`
+resource "kener_monitor" "m1" {
+  tag          = "tf-acc-inc-m1"
+  name         = "M1"
+  monitor_type = "API"
+  type_data    = jsonencode({ url = "https://example.com" })
+}
+
+resource "kener_monitor" "m2" {
+  tag          = "tf-acc-inc-m2"
+  name         = "M2"
+  monitor_type = "API"
+  type_data    = jsonencode({ url = "https://example.com" })
+}
+
+resource "kener_monitor" "m3" {
+  tag          = "tf-acc-inc-m3"
+  name         = "M3"
+  monitor_type = "API"
+  type_data    = jsonencode({ url = "https://example.com" })
+}
+
+resource "kener_incident" "multi" {
+  title           = %[1]q
+  start_date_time = %[2]d
+  monitors = [
+    { monitor_tag = kener_monitor.m1.tag },
+    { monitor_tag = kener_monitor.m2.tag, impact = "DEGRADED" },
+    { monitor_tag = kener_monitor.m3.tag, impact = "MAINTENANCE" },
+  ]
+}
+`, title, start)
+}
+
+// testAccCheckIncidentDestroy verifies every kener_incident in state is gone
+// from the server after destroy.
+func testAccCheckIncidentDestroy(s *terraform.State) error {
+	c, err := testAccClient()
+	if err != nil {
+		return err
+	}
+	for _, rs := range s.RootModule().Resources {
+		if rs.Type != "kener_incident" {
+			continue
+		}
+		id := rs.Primary.Attributes["id"]
+		_, err := c.GetIncident(context.Background(), id)
+		if err == nil {
+			return fmt.Errorf("incident %q still exists after destroy", id)
+		}
+		if !client.IsNotFound(err) {
+			return fmt.Errorf("unexpected error checking incident %q: %w", id, err)
+		}
+	}
+	return nil
 }
 
 func testAccIncidentConfig(title string, start int64, commentState string) string {

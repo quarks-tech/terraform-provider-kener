@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/quarks-tech/terraform-provider-kener/internal/client"
 )
@@ -118,6 +119,7 @@ func (r *incidentCommentResource) Create(ctx context.Context, req resource.Creat
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	tflog.Debug(ctx, "creating incident comment", map[string]any{"incident_id": plan.IncidentID.ValueString()})
 	created, err := r.client.CreateIncidentComment(ctx, plan.IncidentID.ValueString(), modelToComment(&plan))
 	if err != nil {
 		resp.Diagnostics.AddError("Error creating incident comment", fmt.Sprintf("Could not create comment on incident %q: %s", plan.IncidentID.ValueString(), err))
@@ -133,6 +135,7 @@ func (r *incidentCommentResource) Read(ctx context.Context, req resource.ReadReq
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	tflog.Debug(ctx, "reading incident comment", map[string]any{"incident_id": state.IncidentID.ValueString(), "id": state.ID.ValueString()})
 	got, err := r.client.GetIncidentComment(ctx, state.IncidentID.ValueString(), state.ID.ValueString())
 	if err != nil {
 		if client.IsNotFound(err) {
@@ -152,6 +155,7 @@ func (r *incidentCommentResource) Update(ctx context.Context, req resource.Updat
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	tflog.Debug(ctx, "updating incident comment", map[string]any{"incident_id": plan.IncidentID.ValueString(), "id": plan.ID.ValueString()})
 	updated, err := r.client.UpdateIncidentComment(ctx, plan.IncidentID.ValueString(), plan.ID.ValueString(), modelToComment(&plan))
 	if err != nil {
 		resp.Diagnostics.AddError("Error updating incident comment", fmt.Sprintf("Could not update comment %q: %s", plan.ID.ValueString(), err))
@@ -167,6 +171,7 @@ func (r *incidentCommentResource) Delete(ctx context.Context, req resource.Delet
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	tflog.Debug(ctx, "deleting incident comment", map[string]any{"incident_id": state.IncidentID.ValueString(), "id": state.ID.ValueString()})
 	if err := r.client.DeleteIncidentComment(ctx, state.IncidentID.ValueString(), state.ID.ValueString()); err != nil {
 		if client.IsNotFound(err) {
 			return

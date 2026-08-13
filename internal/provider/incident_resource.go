@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/quarks-tech/terraform-provider-kener/internal/client"
 )
@@ -183,6 +184,12 @@ func modelToIncident(ctx context.Context, m *incidentResourceModel) (*client.Inc
 // so overwriting them with the server's rounded value would cause an
 // inconsistent-result error and perpetual diffs. The caller keeps the
 // configured timestamps (see setIncidentTimestamps for the data source).
+//
+// monitors are likewise kept as configured when known: Kener may return them in
+// a different order, and overwriting a known plan value with the server echo
+// would trigger a "Provider produced inconsistent result after apply" error.
+// The server value is only used to seed the list when it is absent (on import,
+// or when the user omitted monitors entirely so the plan is unknown).
 func applyIncident(ctx context.Context, in *client.Incident, m *incidentResourceModel) diag.Diagnostics {
 	m.ID = types.StringValue(in.ID.String())
 	m.Title = types.StringValue(in.Title)
@@ -190,9 +197,12 @@ func applyIncident(ctx context.Context, in *client.Incident, m *incidentResource
 	m.IncidentType = types.StringValue(in.IncidentType)
 	m.IncidentSource = types.StringValue(in.IncidentSource)
 	m.URL = types.StringValue(in.URL)
-	list, diags := monitorsToModel(ctx, in.Monitors)
-	m.Monitors = list
-	return diags
+	if m.Monitors.IsNull() || m.Monitors.IsUnknown() {
+		list, diags := monitorsToModel(ctx, in.Monitors)
+		m.Monitors = list
+		return diags
+	}
+	return nil
 }
 
 // setIncidentTimestamps writes the server's timestamps onto the model. Used by
@@ -213,6 +223,7 @@ func (r *incidentResource) Create(ctx context.Context, req resource.CreateReques
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	tflog.Debug(ctx, "creating incident", map[string]any{"title": plan.Title.ValueString()})
 	created, err := r.client.CreateIncident(ctx, payload)
 	if err != nil {
 		resp.Diagnostics.AddError("Error creating incident", fmt.Sprintf("Could not create incident %q: %s", plan.Title.ValueString(), err))
@@ -228,6 +239,7 @@ func (r *incidentResource) Read(ctx context.Context, req resource.ReadRequest, r
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	tflog.Debug(ctx, "reading incident", map[string]any{"id": state.ID.ValueString()})
 	got, err := r.client.GetIncident(ctx, state.ID.ValueString())
 	if err != nil {
 		if client.IsNotFound(err) {
@@ -258,6 +270,7 @@ func (r *incidentResource) Update(ctx context.Context, req resource.UpdateReques
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	tflog.Debug(ctx, "updating incident", map[string]any{"id": plan.ID.ValueString()})
 	updated, err := r.client.UpdateIncident(ctx, plan.ID.ValueString(), payload)
 	if err != nil {
 		resp.Diagnostics.AddError("Error updating incident", fmt.Sprintf("Could not update incident %q: %s", plan.ID.ValueString(), err))
@@ -273,6 +286,7 @@ func (r *incidentResource) Delete(ctx context.Context, req resource.DeleteReques
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	tflog.Debug(ctx, "deleting incident", map[string]any{"id": state.ID.ValueString()})
 	if err := r.client.DeleteIncident(ctx, state.ID.ValueString()); err != nil {
 		if client.IsNotFound(err) {
 			return
