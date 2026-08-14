@@ -1,0 +1,14 @@
+name: PR Compliance
+on:
+  pull_request:
+    types:
+      - edited
+      - opened
+      - reopened
+      - synchronize
+      - unlocked
+jobs:
+  validate:
+    uses: quarks-tech/github-workflows/.github/workflows/pr-compliance.yml@master
+    secrets:
+      PR_COMPLIENCE_TOKEN: ${{ secrets.PR_COMPLIENCE_TOKEN }}
