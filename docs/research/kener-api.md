@@ -242,12 +242,12 @@ globalMaintenanceNotificationSettings`.
 
 ---
 
-## 8. Gaps vs. the original task brief (call-outs)
+## 8. API coverage gaps (call-outs)
 
-The task brief assumed **triggers/alerts, subscribers, and API keys/tokens** as
-manageable resources. **None of these have a `/api/v4` REST surface** — they exist
-only behind the `/manage` admin dashboard (session-authenticated, not token). So the
-provider's real resource set is:
+Kener's `/manage` admin dashboard exposes **triggers/alerts, subscribers, and API
+keys/tokens**, but **none of these have a `/api/v4` REST surface** — they are
+session-authenticated only (not token), so the provider cannot manage them. The
+provider's real resource set is therefore:
 
 - `kener_monitor` (+ data source) — reference resource
 - `kener_incident` (+ `kener_incident_comment`)
