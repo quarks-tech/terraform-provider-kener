@@ -38,8 +38,8 @@ resource "kener_monitor" "tcp" {
 
   type_data = jsonencode({
     hosts = [
-      { type = "IP4", host = "db1.internal", port = 5432, timeout = 1000 },
-      { type = "IP4", host = "db2.internal", port = 5432, timeout = 1000 },
+      { type = "IP4", host = "db1.example.com", port = 5432, timeout = 1000 },
+      { type = "IP4", host = "db2.example.com", port = 5432, timeout = 1000 },
     ]
   })
 }

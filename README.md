@@ -6,9 +6,7 @@ resources through the instance's `/api/v4` REST API.
 
 Built on the modern [terraform-plugin-framework](https://developer.hashicorp.com/terraform/plugin/framework).
 
-## Status
-
-This provider is being built incrementally. Implemented so far:
+## Supported resources
 
 | Resource / data source | Status |
 | --- | --- |
@@ -28,7 +26,7 @@ the API.
 ## Requirements
 
 - [Terraform](https://developer.hashicorp.com/terraform/downloads) >= 1.0
-- [Go](https://go.dev/doc/install) >= 1.25 (to build the provider)
+- [Go](https://go.dev/doc/install) >= 1.26 (to build the provider)
 - A Kener instance and an API token (created in Kener under **Settings → API Keys**)
 
 ## Using the provider
