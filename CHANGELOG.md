@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-08-20
+
 ### Added
+- Initial provider with resources `kener_monitor`, `kener_page`,
+  `kener_incident`, `kener_incident_comment`, `kener_maintenance` and
+  `kener_site_config`, matching data sources, generated documentation and
+  release tooling.
 - `tflog` debug logging in every resource's CRUD operations (visible under `TF_LOG=DEBUG`).
 - Acceptance-test `CheckDestroy` for all resources, verifying resources are
   actually removed server-side after `terraform destroy` (and, for
@@ -33,10 +39,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `kener_site_config` keys whose `data_type` is `string` now detect drift: the
   value is refreshed from the server on read (object values remain configured
   verbatim because Kener deep-merges them server-side).
-
-## [0.1.0] - Initial
-
-- Initial provider with resources `kener_monitor`, `kener_page`,
-  `kener_incident`, `kener_incident_comment`, `kener_maintenance` and
-  `kener_site_config`, matching data sources, generated documentation and
-  release tooling.
