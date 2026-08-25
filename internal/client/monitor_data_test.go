@@ -68,7 +68,7 @@ func TestSeedMonitorDataOmitsNilDeviation(t *testing.T) {
 }
 
 func TestSeedMonitorDataError(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = io.WriteString(w, `{"error":{"code":"BAD_REQUEST","message":"start_ts must be less than end_ts"}}`)
 	}))
