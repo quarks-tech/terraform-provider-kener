@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `kener_monitor_seed` resource: seeds a monitor's status history over a relative
+  window ending now (default 90 days, `UP`), so a brand-new monitor renders a
+  populated bar chart instead of `NO_DATA`. Modelled as a one-shot, fire-and-forget
+  side effect — `Read` is a no-op and every input forces replacement, so it never
+  drifts against the minute-by-minute live history. Backed by a new
+  `client.SeedMonitorData` method (`PATCH /monitors/{tag}/data`).
+
 ## [0.1.0] - 2026-08-20
 
 ### Added
