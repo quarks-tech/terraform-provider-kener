@@ -23,3 +23,17 @@ resource "kener_page" "status" {
     }
   })
 }
+
+# Manage the built-in home page. It already exists on the server, so it must be
+# imported before it can be updated (it cannot be created or destroyed).
+import {
+  to = kener_page.home
+  id = "~home"
+}
+
+resource "kener_page" "home" {
+  page_path   = "~home"
+  page_title  = "Example Status"
+  page_header = "All Systems"
+  monitors    = [kener_monitor.api.tag]
+}

@@ -14,6 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   side effect — `Read` is a no-op and every input forces replacement, so it never
   drifts against the minute-by-minute live history. Backed by a new
   `client.SeedMonitorData` method (`PATCH /monitors/{tag}/data`).
+- `kener_page` can now manage the built-in home page. The special `page_path`
+  `~home` is accepted as a configuration value (previously it was rejected by the
+  `page_path` validator and only usable as an import id), so the home page can be
+  imported and then updated in place — its `monitors`, `page_title`, `page_header`
+  and `page_subheader`. The home page still cannot be created or deleted: creating
+  a `~home` resource without importing it first now fails with a clear error
+  pointing at `terraform import` / an `import {}` block.
 
 ## [0.1.0] - 2026-08-20
 

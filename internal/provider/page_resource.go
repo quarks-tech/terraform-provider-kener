@@ -21,8 +21,9 @@ import (
 	"github.com/quarks-tech/terraform-provider-kener/internal/client"
 )
 
-// pagePathPattern mirrors Kener's page path sanitisation: a lowercase slug.
-var pagePathPattern = `^[a-z0-9]([a-z0-9_-]*[a-z0-9])?$`
+// pagePathPattern mirrors Kener's page path sanitisation: a lowercase slug, or
+// the literal `~home` token that addresses the built-in home page.
+var pagePathPattern = `^(~home|[a-z0-9]([a-z0-9_-]*[a-z0-9])?)$`
 
 var (
 	_ resource.Resource                = (*pageResource)(nil)
@@ -64,11 +65,11 @@ func (r *pageResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"page_path": schema.StringAttribute{
-				MarkdownDescription: "Immutable URL slug for the page (e.g. `status`). Changing it forces recreation. Use `~home` to import the built-in home page.",
+				MarkdownDescription: "Immutable URL slug for the page (e.g. `status`). Changing it forces recreation. Use the special path `~home` to manage the built-in home page (import it first; it cannot be created).",
 				Required:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile(pagePathPattern), "must be a lowercase slug (letters, digits, '-' and '_'; start and end alphanumeric), or the literal '~home' on import"),
+					stringvalidator.RegexMatches(regexp.MustCompile(pagePathPattern), "must be a lowercase slug (letters, digits, '-' and '_'; start and end alphanumeric), or the literal '~home'"),
 				},
 			},
 			"page_title": schema.StringAttribute{
@@ -180,6 +181,18 @@ func (r *pageResource) Create(ctx context.Context, req resource.CreateRequest, r
 	var plan pageResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// The built-in home page already exists on the server and cannot be created;
+	// it can only be imported and then updated (mirrors the Delete behaviour).
+	if plan.PagePath.ValueString() == client.HomePageToken {
+		resp.Diagnostics.AddError(
+			"Home page cannot be created",
+			"The Kener home page (~home) already exists and cannot be created; import it, then manage it in place. For example:\n\n"+
+				"  import {\n    to = kener_page.home\n    id = \"~home\"\n  }\n\n"+
+				"or run `terraform import kener_page.home '~home'`.",
+		)
 		return
 	}
 
