@@ -127,6 +127,7 @@ func (p *kenerProvider) Configure(ctx context.Context, req provider.ConfigureReq
 func (p *kenerProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewMonitorResource,
+		NewMonitorSeedResource,
 		NewPageResource,
 		NewIncidentResource,
 		NewIncidentCommentResource,

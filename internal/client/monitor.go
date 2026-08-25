@@ -123,3 +123,34 @@ func (c *Client) ListMonitors(ctx context.Context, filters *MonitorListFilters) 
 	}
 	return out.Monitors, nil
 }
+
+// MonitorDataRange is the body of a range status-history write. Kener expands the
+// [StartTS,EndTS] range (UTC seconds, truncated to the minute) into one data point
+// per minute server-side and upserts them on (monitor_tag, timestamp), so a whole
+// multi-day window is written by a single PATCH. Status must be one of "UP", "DOWN"
+// or "DEGRADED" (this is narrower than a monitor's default_status). Latency and
+// Deviation are non-negative; Deviation adds per-minute latency jitter of
+// ±Deviation (nil/0 means a constant Latency).
+type MonitorDataRange struct {
+	StartTS   int64  `json:"start_ts"`
+	EndTS     int64  `json:"end_ts"`
+	Status    string `json:"status"`
+	Latency   int64  `json:"latency"`
+	Deviation *int64 `json:"deviation,omitempty"`
+}
+
+type monitorDataRangeResponse struct {
+	Message      string `json:"message"`
+	UpdatedCount int64  `json:"updated_count"`
+}
+
+// SeedMonitorData writes a single status over the whole [start,end] range of a
+// monitor's history and returns the server's reported updated_count. Any existing
+// points in the range are overwritten (upsert). The tag is taken from the path.
+func (c *Client) SeedMonitorData(ctx context.Context, tag string, r *MonitorDataRange) (int64, error) {
+	var out monitorDataRangeResponse
+	if err := c.doJSON(ctx, http.MethodPatch, "/monitors/"+url.PathEscape(tag)+"/data", nil, r, &out); err != nil {
+		return 0, err
+	}
+	return out.UpdatedCount, nil
+}
