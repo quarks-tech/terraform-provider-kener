@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -10,6 +11,24 @@ import (
 
 	"github.com/quarks-tech/terraform-provider-kener/internal/client"
 )
+
+// TestPagePathPattern guards the page_path validator: ordinary lowercase slugs
+// are accepted, the literal ~home is accepted, and near-misses are rejected.
+func TestPagePathPattern(t *testing.T) {
+	re := regexp.MustCompile(pagePathPattern)
+	valid := []string{"~home", "status", "a", "my-page", "a_b-c", "page1"}
+	invalid := []string{"~foo", "home~", "", "Foo", "~Home", "-abc", "abc-", "~", "a~b"}
+	for _, s := range valid {
+		if !re.MatchString(s) {
+			t.Errorf("expected %q to be a valid page_path", s)
+		}
+	}
+	for _, s := range invalid {
+		if re.MatchString(s) {
+			t.Errorf("expected %q to be an invalid page_path", s)
+		}
+	}
+}
 
 func TestAccPageResource(t *testing.T) {
 	const path = "tf-acc-page"
@@ -108,6 +127,62 @@ resource "kener_page" "multi" {
   monitors    = [kener_monitor.m1.tag, kener_monitor.m2.tag, kener_monitor.m3.tag]
 }
 `, path)
+}
+
+// TestAccPageResource_home exercises managing the built-in home page (~home):
+// it is imported (never created), then updated in place, and a final plan must
+// be empty (no drift). The home page must NOT be destroyed, so this case has no
+// CheckDestroy.
+func TestAccPageResource_home(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			// Import the pre-existing home page and persist it into state so the
+			// following config-driven step updates it instead of creating it.
+			{
+				Config:             testAccPageConfigHome("TF Home", "Home Header"),
+				ResourceName:       "kener_page.home",
+				ImportState:        true,
+				ImportStateId:      client.HomePageToken,
+				ImportStatePersist: true,
+			},
+			// Update in place: apply title/header and attach one monitor.
+			{
+				Config: testAccPageConfigHome("TF Home", "Home Header"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("kener_page.home", "page_path", client.HomePageToken),
+					resource.TestCheckResourceAttr("kener_page.home", "page_title", "TF Home"),
+					resource.TestCheckResourceAttr("kener_page.home", "page_header", "Home Header"),
+					resource.TestCheckResourceAttr("kener_page.home", "monitors.#", "1"),
+					resource.TestCheckResourceAttr("kener_page.home", "monitors.0", "tf-acc-home-mon"),
+				),
+			},
+			// Drift guard: re-applying the same config must be a no-op.
+			{
+				Config:   testAccPageConfigHome("TF Home", "Home Header"),
+				PlanOnly: true,
+			},
+		},
+	})
+}
+
+func testAccPageConfigHome(title, header string) string {
+	return fmt.Sprintf(`
+resource "kener_monitor" "home_mon" {
+  tag          = "tf-acc-home-mon"
+  name         = "TF Acc Home Monitor"
+  monitor_type = "API"
+  type_data    = jsonencode({ url = "https://example.com" })
+}
+
+resource "kener_page" "home" {
+  page_path   = "~home"
+  page_title  = %[1]q
+  page_header = %[2]q
+  monitors    = [kener_monitor.home_mon.tag]
+}
+`, title, header)
 }
 
 // testAccCheckPageDestroy verifies every kener_page in state is gone from the
