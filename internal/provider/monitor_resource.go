@@ -24,7 +24,7 @@ import (
 
 // Monitor enums, from src/lib/types/monitor.ts and the v4 handlers.
 var (
-	monitorTypes    = []string{"API", "PING", "TCP", "DNS", "NONE", "GROUP", "SSL", "SQL", "HEARTBEAT", "GAMEDIG", "GRPC"}
+	monitorTypes    = []string{"API", "PING", "TCP", "DNS", "NONE", "GROUP", "SSL", "SQL", "HEARTBEAT", "GAMEDIG", "GRPC", "PROMETHEUS", "DOCKER"}
 	defaultStatuses = []string{"UP", "DOWN", "DEGRADED", "MAINTENANCE", "NO_DATA"}
 	monitorStatuses = []string{"ACTIVE", "INACTIVE"}
 	// tagPattern matches Kener's slug validation: a single [a-z0-9], or a string
@@ -129,7 +129,7 @@ func (r *monitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Validators:          []validator.String{stringvalidator.OneOf(monitorStatuses...)},
 			},
 			"monitor_type": schema.StringAttribute{
-				MarkdownDescription: "Kind of check. One of `API`, `PING`, `TCP`, `DNS`, `NONE`, `GROUP`, `SSL`, `SQL`, `HEARTBEAT`, `GAMEDIG`, `GRPC`. Defaults to `API`.",
+				MarkdownDescription: "Kind of check. One of `API`, `PING`, `TCP`, `DNS`, `NONE`, `GROUP`, `SSL`, `SQL`, `HEARTBEAT`, `GAMEDIG`, `GRPC`, `PROMETHEUS`, `DOCKER`. Defaults to `API`.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
