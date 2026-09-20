@@ -108,7 +108,7 @@ internal numeric `id` (in responses) but all addressing is by `tag`.
 | `default_status` | enum | no | `UP` | `UP\|DOWN\|DEGRADED\|MAINTENANCE\|NO_DATA` |
 | `status` | string | no | `ACTIVE` | monitor enabled state: `ACTIVE\|INACTIVE` |
 | `category_name` | string | no | null | |
-| `monitor_type` | enum | no | `API` | `API\|PING\|TCP\|DNS\|NONE\|GROUP\|SSL\|SQL\|HEARTBEAT\|GAMEDIG\|GRPC` |
+| `monitor_type` | enum | no | `API` | `API\|PING\|TCP\|DNS\|NONE\|GROUP\|SSL\|SQL\|HEARTBEAT\|GAMEDIG\|GRPC\|PROMETHEUS\|DOCKER` |
 | `type_data` | object | no | null | kind-specific (see 2c); PATCH deep-merges |
 | `include_degraded_in_downtime` | string | no | `NO` | `YES\|NO` |
 | `is_hidden` | string | no | `NO` | `YES\|NO` |
@@ -150,6 +150,18 @@ degraded). Push endpoint `GET|POST /ext/heartbeat/{tag}/{secret}`.
 
 **GRPC**: `host`(req), `port`=50051 (req), `service`="", `tls`=false,
 `insecure`=false, `timeout`=10000ms.
+
+**PROMETHEUS** (Kener 4.1.3+): `url`(req, base URL; base paths work), `query`(req,
+PromQL instant query), `down`/`degraded`=`{operator,value}` (`operator∈>|>=|<|<=|==|!=`;
+`down` wins over `degraded`), `noDataStatus`=DOWN, `errorStatus`=DOWN (both
+`UP|DEGRADED|DOWN`), `headers`=`{key,value}[]`, `timeout`=10000ms,
+`allowSelfSignedCert`=false, `proxy`. Charted value is the metric, not latency.
+
+**DOCKER** (Kener 4.1.5+): `connectionType`=socket (`socket|tcp|tls`),
+`daemon`=`/var/run/docker.sock` (req; `host:port` for tcp/tls), `tlsCa`, `tlsCert`,
+`tlsKey` (PEM, `$SECRET` substitution applies), `checkType`=container
+(`container|daemon`), `containerName` (req when `checkType=container`),
+`timeout`=10000ms.
 
 **GROUP**: `monitors`=`{tag,weight}[]` (req, ≥2 members, weights sum≈1),
 `executionDelay`=1000ms (≥1000), `latencyCalculation`=AVG (`AVG|MAX|MIN`).

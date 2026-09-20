@@ -81,7 +81,7 @@ resource "kener_monitor" "group" {
 - `include_degraded_in_downtime` (Boolean) Whether DEGRADED status counts against uptime. Defaults to `false`.
 - `is_hidden` (Boolean) Whether the monitor is hidden from the status page. Defaults to `false`.
 - `monitor_settings_json` (String) Free-form additional monitor settings as a JSON object.
-- `monitor_type` (String) Kind of check. One of `API`, `PING`, `TCP`, `DNS`, `NONE`, `GROUP`, `SSL`, `SQL`, `HEARTBEAT`, `GAMEDIG`, `GRPC`. Defaults to `API`.
+- `monitor_type` (String) Kind of check. One of `API`, `PING`, `TCP`, `DNS`, `NONE`, `GROUP`, `SSL`, `SQL`, `HEARTBEAT`, `GAMEDIG`, `GRPC`, `PROMETHEUS`, `DOCKER`. Defaults to `API`.
 - `status` (String) Whether the monitor is enabled. One of `ACTIVE`, `INACTIVE`. Defaults to `ACTIVE`.
 - `type_data` (String) Type-specific configuration as a JSON object, e.g. `jsonencode({ url = "https://example.com" })`. The exact fields depend on `monitor_type` (see the Kener monitor docs). Kener merges server-side defaults into this value; the provider stores the configured value verbatim.
 

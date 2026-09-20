@@ -21,6 +21,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and `page_subheader`. The home page still cannot be created or deleted: creating
   a `~home` resource without importing it first now fails with a clear error
   pointing at `terraform import` / an `import {}` block.
+- `kener_monitor.monitor_type` now accepts `PROMETHEUS` (added in Kener 4.1.3) and
+  `DOCKER` (added in Kener 4.1.5). The attribute's `OneOf` validator predated both
+  Kener releases, so the two types were rejected at plan time even though the
+  server accepts them. `type_data` is already pass-through, so neither type needs
+  provider-side schema.
 
 ## [0.1.0] - 2026-08-20
 
